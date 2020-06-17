@@ -1,23 +1,42 @@
+require('dotenv').config()
+const sgMail = require('@sendgrid/mail')
+sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
 const nightmare = require('nightmare')()
 
-// if using .ca URL, priceNumber replaces CDN$ instead of $
-// URL needs to be trimmed 
+const args = process.argv.slice(2)
+const url = args[0]
+const minPrice = args[1]
+
 checkPrice()
 
 async function checkPrice() {
-  
-    const priceString = await nightmare.goto("https://www.amazon.ca/i5-9400F-Desktop-Processor-Without-Graphics/dp/B07MRCGQQ4")
+  try {
+    const priceString = await nightmare.goto(url)
                                        .wait("#priceblock_ourprice")
                                        .evaluate(() => document.getElementById("priceblock_ourprice").innerText)
                                        .end()
-    const priceNumber = parseFloat(priceString.replace('CDN$', ''))
-    if (priceNumber < 250) {
-        console.log("it is cheap")
-        console.log(priceNumber)
+    const priceNumber = parseFloat(priceString.replace('$', ''))
+    if (priceNumber < minPrice) {
+      await sendEmail(
+        'Price Is Low',
+        `The price on ${url} has dropped below ${targetPrice}`
+      )
     }
-    else{
-        console.log("it is expensive")
-        console.log(priceNumber)
-    }
+  } catch (e) {
+    await sendEmail('Amazon Price Checker Error', e.message)
+    throw e
+  }
+}
+
+function sendEmail(subject, body) {
+  const email = {
+    to: 'sihad71210@royandk.com',
+    from: 'kaustav927@gmail.com',
+    subject: subject,
+    text: body,
+    html: body
+  }
+
+  return sgMail.send(email)
 }
