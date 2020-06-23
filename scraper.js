@@ -1,42 +1,55 @@
-require('dotenv').config()
-const sgMail = require('@sendgrid/mail')
-sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+const nightmare=require('nightmare')();
+const nodemailer=require('nodemailer');
+require('dotenv').config();
 
-const nightmare = require('nightmare')()
+
 
 const args = process.argv.slice(2)
 const url = args[0]
 const minPrice = args[1]
+var ItemString=[]
+
+let transporter=nodemailer.createTransport({
+    service:'outlook',
+    auth:{
+        user: process.env.Username,
+        pass: process.env.Password
+    }
+});
+
+let mailOptions={
+    from: 'ksharm69@uwo.ca',
+    to:'pirem83540@ddlre.com',
+    subject: `The price of ${ItemString} has dropped below ${minPrice}`,
+    text: `The price on ${url} has dropped below ${minPrice}`
+}
+
 
 checkPrice()
-
 async function checkPrice() {
-  try {
     const priceString = await nightmare.goto(url)
                                        .wait("#priceblock_ourprice")
                                        .evaluate(() => document.getElementById("priceblock_ourprice").innerText)
                                        .end()
-    const priceNumber = parseFloat(priceString.replace('$', ''))
-    if (priceNumber < minPrice) {
-      await sendEmail(
-        'Price Is Low',
-        `The price on ${url} has dropped below ${targetPrice}`
-      )
-    }
-  } catch (e) {
-    await sendEmail('Amazon Price Checker Error', e.message)
-    throw e
-  }
+
+                                     
+    const priceNumber = parseFloat(priceString.replace('CDN$', ''))
+        if (priceNumber < minPrice) {
+          console.log("it is cheap")
+          console.log(priceNumber, ItemString)
+          transporter.sendMail(mailOptions,function(err,data){
+              if(err){
+                  console.log('error',err)
+              }
+              else{
+                  console.log('Email has sent')
+              }
+
+          });
+        }
 }
 
-function sendEmail(subject, body) {
-  const email = {
-    to: 'sihad71210@royandk.com',
-    from: 'kaustav927@gmail.com',
-    subject: subject,
-    text: body,
-    html: body
-  }
 
-  return sgMail.send(email)
-}
+
+
+ //node scraper.js https://www.amazon.ca/gp/product/B07MQP5LNM?pf_rd_r=QVVDBB0NHY2X25W1V2YD 300
